@@ -78,11 +78,11 @@ button:hover {
 }  
   </style>
   <!-- Firebase Scripts -->
-  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-messaging.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging.js"></script>
 </head>
 <body>
   <div id="app">
@@ -109,12 +109,6 @@ button:hover {
     </div>
   </div>
   <script type="module">
-   // Initialize Firebase
-        // Import Firebase SDK functions
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-auth.js";
-import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-database.js";
-
 // Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyD9d1Zoj8eAV1512WYZJQ1SQYQamB6_izg",
@@ -135,101 +129,93 @@ const messaging = firebase.messaging();
 
 // Register Function
 document.getElementById('registerBtn').addEventListener('click', () => {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-  auth.createUserWithEmailAndPassword(email, password).then(user => {
-    const userId = email.substring(0, 5);  // Create unique ID
-    db.collection('users').doc(userId).set({
-      email: email,
-      online: false,
-      fcmToken: '' // Placeholder for future FCM token
+    auth.createUserWithEmailAndPassword(email, password).then(user => {
+        const userId = email.substring(0, 5);
+        db.collection('users').doc(userId).set({
+            email: email,
+            online: false
+        });
+        alert("Registered! Your ID is " + userId);
     });
-    alert("Registered! Your ID is " + userId);
-  });
 });
 
 // Login Function
 document.getElementById('loginBtn').addEventListener('click', () => {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-  auth.signInWithEmailAndPassword(email, password).then(user => {
-    const userId = email.substring(0, 5);
-    rtdb.ref(`/status/${userId}`).set({ online: true });
-
-    // Request FCM Token
-    messaging.requestPermission().then(() => {
-      return messaging.getToken();
-    }).then(token => {
-      db.collection('users').doc(userId).update({
-        fcmToken: token
-      });
-    }).catch(err => {
-      console.error('Unable to get permission to notify.', err);
+    auth.signInWithEmailAndPassword(email, password).then(user => {
+        const userId = email.substring(0, 5);
+        rtdb.ref(`/status/${userId}`).set({ online: true });
+        initMessaging(userId);
     });
-
-    document.querySelector('.login-register').classList.add('hidden');
-    document.querySelector('.chat-window').classList.remove('hidden');
-  });
 });
 
 // Start Chat
 document.getElementById('chatBtn').addEventListener('click', () => {
-  const targetUserId = document.getElementById('userIdInput').value;
+    const targetUserId = document.getElementById('userIdInput').value;
 
-  db.collection('users').doc(targetUserId).get().then(doc => {
-    if (doc.exists) {
-      const targetUserOnline = doc.data().online;
-      if (!targetUserOnline) {
-        alert("Recipient is offline. Your message will be delivered.");
-      }
-      document.getElementById('messageArea').classList.remove('hidden');
-      loadMessages(targetUserId);
-    } else {
-      alert("User not found!");
-    }
-  });
+    db.collection('users').doc(targetUserId).get().then(doc => {
+        if (doc.exists) {
+            const targetUserOnline = doc.data().online;
+            if (!targetUserOnline) {
+                alert("Recipient is offline. Your message will be delivered.");
+            }
+            document.getElementById('messageArea').classList.remove('hidden');
+        } else {
+            alert("User not found!");
+        }
+    });
 });
 
 // Send Message
 document.getElementById('sendBtn').addEventListener('click', () => {
-  const message = document.getElementById('messageInput').value;
-  const targetUserId = document.getElementById('userIdInput').value;
+    const message = document.getElementById('messageInput').value;
+    const targetUserId = document.getElementById('userIdInput').value;
 
-  if (message.trim() === '') return;
-
-  db.collection('chats').doc(targetUserId).collection('messages').add({
-    from: auth.currentUser.email,
-    message: message,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
-
-  document.getElementById('messageInput').value = ''; // Clear the input
+    db.collection('chats').doc(targetUserId).collection('messages').add({
+        from: auth.currentUser.email,
+        message: message,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        displayMessage(message);
+    });
 });
 
-// Load Messages
-function loadMessages(targetUserId) {
-  const messageLog = document.querySelector('.message-log');
-  db.collection('chats').doc(targetUserId).collection('messages')
-    .orderBy('timestamp')
-    .onSnapshot(snapshot => {
-      messageLog.innerHTML = ''; // Clear previous messages
-      snapshot.forEach(doc => {
-        const msgData = doc.data();
-        const timestamp = msgData.timestamp ? new Date(msgData.timestamp.toMillis()).toLocaleTimeString() : 'Unknown Time';
-        const msgDiv = document.createElement('div');
-        msgDiv.innerHTML = `<span>${msgData.from}: ${msgData.message}</span><span>${timestamp}</span>`;
-        messageLog.appendChild(msgDiv);
-      });
-    });
+// Display Message with Timestamp
+function displayMessage(message) {
+    const messageLog = document.querySelector('.message-log');
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message');
+    messageDiv.innerHTML = `
+        ${message}
+        <div class="message-timestamp">${new Date().toLocaleTimeString()}</div>
+    `;
+    messageLog.appendChild(messageDiv);
 }
 
-// Firebase Cloud Messaging - Handle Background Messages
-messaging.onMessage((payload) => {
-  console.log('Message received. ', payload);
-  // Show notification or other UI changes here
-});   
+// Initialize Firebase Cloud Messaging
+function initMessaging(userId) {
+    messaging.requestPermission().then(() => {
+        return messaging.getToken();
+    }).then(token => {
+        // Send FCM token to the server
+        db.collection('users').doc(userId).update({
+            fcmToken: token
+        });
+    }).catch(error => {
+        console.error('Error getting permission for notifications', error);
+    });
+
+    // Handle incoming messages
+    messaging.onMessage(payload => {
+        console.log('Message received:', payload);
+        alert('New message received: ' + payload.notification.body);
+    });
+    }
   </script>
 </body>
 </html>
