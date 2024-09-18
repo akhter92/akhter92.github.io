@@ -306,28 +306,52 @@ function loadGlobalMessages() {
         globalChatBox.appendChild(messageElement);
     });
 }
-
 // Send private message
 sendPrivateMessageButton.addEventListener('click', () => {
     const recipient = recipientEmailInput.value.trim();
     const message = privateMessageInput.value.trim();
+
     if (recipient && message) {
         const senderEmail = auth.currentUser.email;
-        const chatPath = `private-messages/${getChatId(senderEmail, recipient)}`;
-        push(ref(db, chatPath), {
-            message: message,
-            timestamp: Date.now(),
-            sender: senderEmail
+        
+        // Check if the recipient exists
+        const recipientPath = `users/${recipient.replace('.', '_')}`;
+        const recipientRef = ref(db, recipientPath);
+
+        get(recipientRef).then((snapshot) => {
+            if (snapshot.exists()) {
+                // Send message if recipient exists
+                const chatPath = `private-messages/${getChatId(senderEmail, recipient)}`;
+                push(ref(db, chatPath), {
+                    message: message,
+                    timestamp: Date.now(),
+                    sender: senderEmail
+                });
+                privateMessageInput.value = ''; // Clear the message input
+            } else {
+                alert("Recipient does not exist.");
+            }
+        }).catch((error) => {
+            console.error("Error checking recipient:", error);
         });
-        privateMessageInput.value = '';
     }
 });
 
-// Load private chat messages (call this when a recipient is set)
+// Load private chat messages for the selected recipient
+recipientEmailInput.addEventListener('change', () => {
+    const recipient = recipientEmailInput.value.trim();
+    if (recipient) {
+        loadPrivateMessages(recipient);
+    }
+});
+
 function loadPrivateMessages(recipient) {
     const senderEmail = auth.currentUser.email;
     const chatPath = `private-messages/${getChatId(senderEmail, recipient)}`;
     const privateMessagesRef = ref(db, chatPath);
+    privateChatBox.innerHTML = ''; // Clear the private chat box
+
+    // Listen for new messages and append them to the chat
     onChildAdded(privateMessagesRef, (snapshot) => {
         const data = snapshot.val();
         const messageElement = document.createElement('div');
@@ -336,10 +360,10 @@ function loadPrivateMessages(recipient) {
     });
 }
 
-// Helper function to generate chat ID based on two email addresses
+// Helper function to generate a unique chat ID
 function getChatId(email1, email2) {
-    return [email1, email2].sort().join('_');
-}
+    return [email1.replace('.', '_'), email2.replace('.', '_')].sort().join('_');
+        }
         
     </script>
 </body>
