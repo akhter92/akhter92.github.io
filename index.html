@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global & Private Chat</title>
+    <style>
+        /* General styles */
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: white;
+}
+
+#auth-container, #chat-container {
+    width: 400px;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    animation: fadeIn 1s ease;
+}
+
+#auth-container input, #auth-container button {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 25px;
+    border: none;
+    outline: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+#auth-container input {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+#auth-container input::placeholder {
+    color: #ddd;
+}
+
+#auth-container button {
+    background: linear-gradient(135deg, #ff7e5f, #feb47b);
+    color: white;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    font-weight: bold;
+}
+
+#auth-container button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+#auth-container button:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat box styling */
+#chat-container {
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#chat-container h3 {
+    font-size: 22px;
+    font-weight: 600;
+    background: -webkit-linear-gradient(#ffb300, #ff3c6e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+}
+
+#global-chat, #private-chat {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 20px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    animation: slideUp 0.5s ease forwards;
+}
+
+#global-chat:hover, #private-chat:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+}
+
+#global-chat-box, #private-chat-box {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    margin-bottom: 15px;
+}
+
+#global-chat-box div, #private-chat-box div {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 10px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+    display: inline-block;
+    max-width: 80%;
+    animation: popIn 0.3s ease forwards;
+}
+
+#global-message-input, #private-message-input, #recipient-email {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 25px;
+    background-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+#send-global-message, #send-private-message {
+    width: 100%;
+    background: linear-gradient(135deg, #5ee7df, #b490ca);
+    color: white;
+    padding: 15px;
+    border-radius: 25px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+#send-global-message:hover, #send-private-message:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+#send-global-message:active, #send-private-message:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes popIn {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+     </style>
+</head>
+<body>
+    <!-- Login & Signup Form -->
+    <div id="auth-container">
+        <h2>Chat App</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button id="login-button">Login</button>
+        <button id="signup-button">Sign Up</button>
+    </div>
+
+    <!-- Chat Area (Hidden until logged in) -->
+    <div id="chat-container" style="display:none;">
+        <div id="global-chat">
+            <h3>Global Chat</h3>
+            <div id="global-chat-box"></div>
+            <input type="text" id="global-message-input" placeholder="Type a message for everyone">
+            <button id="send-global-message">Send</button>
+        </div>
+
+        <div id="private-chat">
+            <h3>Private Chat</h3>
+            <input type="text" id="recipient-email" placeholder="Recipient's Email">
+            <div id="private-chat-box"></div>
+            <input type="text" id="private-message-input" placeholder="Type a private message">
+            <button id="send-private-message">Send</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database.js"></script>
+    <script type="module">
+        // Import Firebase SDK functions
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-auth.js";
+import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-database.js";
+
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyD9d1Zoj8eAV1512WYZJQ1SQYQamB6_izg",
+    authDomain: "insta-c-d7bf3.firebaseapp.com",
+    databaseURL: "https://insta-c-d7bf3-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "insta-c-d7bf3",
+    storageBucket: "insta-c-d7bf3.appspot.com",
+    messagingSenderId: "584992365852",
+    appId: "1:584992365852:web:41eca3df8eacee86c4aed9"
+};
+
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+// Elements
+const authContainer = document.getElementById('auth-container');
+const chatContainer = document.getElementById('chat-container');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const loginButton = document.getElementById('login-button');
+const signupButton = document.getElementById('signup-button');
+const globalMessageInput = document.getElementById('global-message-input');
+const sendGlobalMessageButton = document.getElementById('send-global-message');
+const globalChatBox = document.getElementById('global-chat-box');
+const recipientEmailInput = document.getElementById('recipient-email');
+const privateMessageInput = document.getElementById('private-message-input');
+const sendPrivateMessageButton = document.getElementById('send-private-message');
+const privateChatBox = document.getElementById('private-chat-box');
+
+// User authentication state listener
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        authContainer.style.display = 'none';
+        chatContainer.style.display = 'block';
+        loadGlobalMessages();
+    } else {
+        authContainer.style.display = 'block';
+        chatContainer.style.display = 'none';
+    }
+});
+
+// Login event
+loginButton.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    signInWithEmailAndPassword(auth, email, password)
+        .catch(error => console.error(error.message));
+});
+
+// Signup event
+signupButton.addEventListener('click', () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    createUserWithEmailAndPassword(auth, email, password)
+        .catch(error => console.error(error.message));
+});
+
+// Send global message
+sendGlobalMessageButton.addEventListener('click', () => {
+    const message = globalMessageInput.value.trim();
+    if (message) {
+        push(ref(db, 'global-messages'), {
+            message: message,
+            timestamp: Date.now(),
+            sender: auth.currentUser.email
+        });
+        globalMessageInput.value = '';
+    }
+});
+
+// Load global chat messages
+function loadGlobalMessages() {
+    const globalMessagesRef = ref(db, 'global-messages');
+    onChildAdded(globalMessagesRef, (snapshot) => {
+        const data = snapshot.val();
+        const messageElement = document.createElement('div');
+        messageElement.textContent = `${data.sender}: ${data.message}`;
+        globalChatBox.appendChild(messageElement);
+    });
+}
+
+// Send private message
+sendPrivateMessageButton.addEventListener('click', () => {
+    const recipient = recipientEmailInput.value.trim();
+    const message = privateMessageInput.value.trim();
+    if (recipient && message) {
+        const senderEmail = auth.currentUser.email;
+        const chatPath = `private-messages/${getChatId(senderEmail, recipient)}`;
+        push(ref(db, chatPath), {
+            message: message,
+            timestamp: Date.now(),
+            sender: senderEmail
+        });
+        privateMessageInput.value = '';
+    }
+});
+
+// Load private chat messages (call this when a recipient is set)
+function loadPrivateMessages(recipient) {
+    const senderEmail = auth.currentUser.email;
+    const chatPath = `private-messages/${getChatId(senderEmail, recipient)}`;
+    const privateMessagesRef = ref(db, chatPath);
+    onChildAdded(privateMessagesRef, (snapshot) => {
+        const data = snapshot.val();
+        const messageElement = document.createElement('div');
+        messageElement.textContent = `${data.sender}: ${data.message}`;
+        privateChatBox.appendChild(messageElement);
+    });
+}
+
+// Helper function to generate chat ID based on two email addresses
+function getChatId(email1, email2) {
+    return [email1, email2].sort().join('_');
+}
+        
+    </script>
+</body>
+</html>
