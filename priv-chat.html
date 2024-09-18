@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, height=device-height">
+  <title>Private Chat App</title>
+  <style>
+    body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(45deg, #f3ec78, #af4261);
+  color: #333;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+#app {
+  width: 400px;
+  padding: 20px;
+  background-color: white;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+input, button {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 5px;
+}
+
+button {
+  background-color: #af4261;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #f3ec78;
+  color: #333;
+}
+
+.message-area {
+  margin-top: 20px;
+}
+
+.message-log {
+  height: 200px;
+  overflow-y: scroll;
+  background-color: #f0f0f0;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+
+.message-log div {
+  padding: 5px;
+  background-color: #af4261;
+  color: white;
+  border-radius: 3px;
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.hidden {
+  display: none;
+}  
+  </style>
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-messaging.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div class="login-register">
+      <h2>Login / Register</h2>
+      <input id="email" type="email" placeholder="Enter email" />
+      <input id="password" type="password" placeholder="Enter password" />
+      <button id="registerBtn">Register</button>
+      <button id="loginBtn">Login</button>
+    </div>
+    
+    <div class="chat-window hidden">
+      <div class="user-info">
+        <h3>Chat with:</h3>
+        <input id="userIdInput" type="text" placeholder="Enter User ID" />
+        <button id="chatBtn">Start Chat</button>
+      </div>
+      
+      <div id="messageArea" class="message-area hidden">
+        <div class="message-log"></div>
+        <input id="messageInput" type="text" placeholder="Type your message" />
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+   // Initialize Firebase
+        // Import Firebase SDK functions
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-auth.js";
+import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-database.js";
+
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyD9d1Zoj8eAV1512WYZJQ1SQYQamB6_izg",
+    authDomain: "insta-c-d7bf3.firebaseapp.com",
+    databaseURL: "https://insta-c-d7bf3-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "insta-c-d7bf3",
+    storageBucket: "insta-c-d7bf3.appspot.com",
+    messagingSenderId: "584992365852",
+    appId: "1:584992365852:web:41eca3df8eacee86c4aed9"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
+const auth = firebase.auth();
+const rtdb = firebase.database();
+const messaging = firebase.messaging();
+
+// Register Function
+document.getElementById('registerBtn').addEventListener('click', () => {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  auth.createUserWithEmailAndPassword(email, password).then(user => {
+    const userId = email.substring(0, 5);  // Create unique ID
+    db.collection('users').doc(userId).set({
+      email: email,
+      online: false,
+      fcmToken: '' // Placeholder for future FCM token
+    });
+    alert("Registered! Your ID is " + userId);
+  });
+});
+
+// Login Function
+document.getElementById('loginBtn').addEventListener('click', () => {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  auth.signInWithEmailAndPassword(email, password).then(user => {
+    const userId = email.substring(0, 5);
+    rtdb.ref(`/status/${userId}`).set({ online: true });
+
+    // Request FCM Token
+    messaging.requestPermission().then(() => {
+      return messaging.getToken();
+    }).then(token => {
+      db.collection('users').doc(userId).update({
+        fcmToken: token
+      });
+    }).catch(err => {
+      console.error('Unable to get permission to notify.', err);
+    });
+
+    document.querySelector('.login-register').classList.add('hidden');
+    document.querySelector('.chat-window').classList.remove('hidden');
+  });
+});
+
+// Start Chat
+document.getElementById('chatBtn').addEventListener('click', () => {
+  const targetUserId = document.getElementById('userIdInput').value;
+
+  db.collection('users').doc(targetUserId).get().then(doc => {
+    if (doc.exists) {
+      const targetUserOnline = doc.data().online;
+      if (!targetUserOnline) {
+        alert("Recipient is offline. Your message will be delivered.");
+      }
+      document.getElementById('messageArea').classList.remove('hidden');
+      loadMessages(targetUserId);
+    } else {
+      alert("User not found!");
+    }
+  });
+});
+
+// Send Message
+document.getElementById('sendBtn').addEventListener('click', () => {
+  const message = document.getElementById('messageInput').value;
+  const targetUserId = document.getElementById('userIdInput').value;
+
+  if (message.trim() === '') return;
+
+  db.collection('chats').doc(targetUserId).collection('messages').add({
+    from: auth.currentUser.email,
+    message: message,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  document.getElementById('messageInput').value = ''; // Clear the input
+});
+
+// Load Messages
+function loadMessages(targetUserId) {
+  const messageLog = document.querySelector('.message-log');
+  db.collection('chats').doc(targetUserId).collection('messages')
+    .orderBy('timestamp')
+    .onSnapshot(snapshot => {
+      messageLog.innerHTML = ''; // Clear previous messages
+      snapshot.forEach(doc => {
+        const msgData = doc.data();
+        const timestamp = msgData.timestamp ? new Date(msgData.timestamp.toMillis()).toLocaleTimeString() : 'Unknown Time';
+        const msgDiv = document.createElement('div');
+        msgDiv.innerHTML = `<span>${msgData.from}: ${msgData.message}</span><span>${timestamp}</span>`;
+        messageLog.appendChild(msgDiv);
+      });
+    });
+}
+
+// Firebase Cloud Messaging - Handle Background Messages
+messaging.onMessage((payload) => {
+  console.log('Message received. ', payload);
+  // Show notification or other UI changes here
+});   
+  </script>
+</body>
+</html>
